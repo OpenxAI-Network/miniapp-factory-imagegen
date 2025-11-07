@@ -1,8 +1,8 @@
 [project]
-name = 'xnode-python-template'
+name = 'miniapp-factory-imagegen'
 version = '1.0.0'
-description = 'Python app running on Xnode.'
-dependencies = []
+description = 'Image generation server for Miniapp Factory'
+dependencies = ["diffusers", "transformers", "torch", "accelerate"]
 
 [project.scripts]
-xnode-python-template = "main:main"
+miniapp-factory-imagegen = "main:main"

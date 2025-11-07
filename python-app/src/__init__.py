@@ -1,1 +1,1 @@
-from . import main as xnode-python-template
+from . import main as miniapp-factory-imagegen

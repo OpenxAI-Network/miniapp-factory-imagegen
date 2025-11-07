@@ -1,5 +1,5 @@
 {
-  description = "Python app running on Xnode!";
+  description = "Image generation server for Miniapp Factory";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
