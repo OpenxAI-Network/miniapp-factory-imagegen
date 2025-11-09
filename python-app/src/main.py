@@ -1,23 +1,29 @@
 import getopt
 import sys
-from diffusers import DiffusionPipeline, FlowMatchEulerDiscreteScheduler
+from diffusers import DiffusionPipeline, FlowMatchEulerDiscreteScheduler, QwenImageTransformer2DModel
 import torch 
 import math
 
 # https://huggingface.co/docs/diffusers/main/api/pipelines/qwenimage#lora-for-faster-inference
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "x", ["diffusion=", "lora="])
+        opts, args = getopt.getopt(sys.argv[1:], "x", ["base=", "transformer=", "transformerconfig=", "lora="])
     except getopt.GetoptError as err:
         print(err)
         sys.exit(2)
 
-    diffusion_path = "/var/lib/miniapp-factory-imagegen/Qwen-Image"
+    base_path = "/var/lib/miniapp-factory-imagegen/Qwen/Qwen-Image"
+    transformer_path = "/var/lib/miniapp-factory-imagegen/qwen_image_fp8_e4m3fn.safetensors"
+    transformer_config_path = "/var/lib/miniapp-factory-imagegen/transformer/config.json"
     lora_path = "/var/lib/miniapp-factory-imagegen/Qwen-Image-Lightning-4steps-V2.0.safetensors"
 
     for o, a in opts:
-        if o == "--diffusion":
-            diffusion_path = a
+        if o == "--base":
+            base_path = a
+        elif o == "--transformer":
+            transformer_path = a
+        elif o == "--transformerconfig":
+            transformer_config_path = a
         elif o == "--lora":
             lora_path = a
         else:
@@ -47,7 +53,16 @@ def main():
         "use_karras_sigmas": False,
     }
     scheduler = FlowMatchEulerDiscreteScheduler.from_config(scheduler_config)
-    pipe = DiffusionPipeline.from_pretrained(diffusion_path, scheduler=scheduler, torch_dtype=torch_dtype).enable_vae_tiling().enable_model_cpu_offload().to(device)
+    transformer = QwenImageTransformer2DModel.from_single_file(
+        transformer_path,
+        config = transformer_config_path
+    )
+    pipe = DiffusionPipeline.from_pretrained(
+        base_path,
+        scheduler=scheduler,
+        transformer=transformer,
+        torch_dtype=torch_dtype
+    ).enable_vae_tiling().enable_model_cpu_offload().to(device)
     pipe.load_lora_weights(
         lora_path
     )
@@ -63,7 +78,7 @@ def main():
         true_cfg_scale=1.0,
         generator=torch.manual_seed(0),
     ).images[0]
-    image.save("/var/lib/miniapp-factory-imagegen/output.png")
+    image.save("output.png")
 
 if __name__ == "__main__":
     main()
