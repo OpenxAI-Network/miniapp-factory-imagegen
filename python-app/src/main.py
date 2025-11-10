@@ -25,30 +25,31 @@ def main():
     }
     scheduler = FlowMatchEulerDiscreteScheduler.from_config(scheduler_config)
 
-    # transformer = QwenImageTransformer2DModel.from_pretrained(
-    #     "/var/lib/miniapp-factory-imagegen/model",
-    #     subfolder="transformer",
-    #     torch_dtype=torch.float8_e4m3fn,
-    #     local_files_only=True,
-    #     low_cpu_mem_usage=True,
-    #     device_map="balanced",
-    #     offload_folder="/var/lib/miniapp-factory-imagegen/offload"
-    # )
-    # print("Finished loading transformer")
-    # transformer.enable_layerwise_casting(storage_dtype=torch.float8_e4m3fn, compute_dtype=torch.bfloat16)
+    transformer = QwenImageTransformer2DModel.from_pretrained(
+        "/var/lib/miniapp-factory-imagegen/model",
+        subfolder="transformer",
+        torch_dtype=torch.bfloat16,
+        local_files_only=True,
+        low_cpu_mem_usage=True,
+        # device_map="balanced",
+        offload_folder="/var/lib/miniapp-factory-imagegen/offload"
+    )
+    print("Finished loading transformer")
+    transformer.enable_layerwise_casting(storage_dtype=torch.float8_e4m3fn, compute_dtype=torch.bfloat16)
 
     pipe = DiffusionPipeline.from_pretrained(
         "/var/lib/miniapp-factory-imagegen/model",
         scheduler=scheduler,
-        # transformer=transformer,
-        torch_dtype={"transformer": torch.float8_e4m3fn, "default": torch.bfloat16},
+        transformer=transformer,
+        torch_dtype=torch.bfloat16,
         local_files_only=True,
         low_cpu_mem_usage=True,
-        device_map="balanced",
+        # device_map="balanced",
         offload_folder="/var/lib/miniapp-factory-imagegen/offload"
     )
     print("Finished loading pipeline")
 
+    pipe.enable_sequential_cpu_offload()
     pipe.enable_vae_tiling()
     pipe.enable_attention_slicing()
     pipe.enable_xformers_memory_efficient_attention()
