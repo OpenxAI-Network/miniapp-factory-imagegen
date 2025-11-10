@@ -58,7 +58,8 @@ def main():
 
     transformer = QwenImageTransformer2DModel.from_single_file(
         transformer_path,
-        config = transformer_config_path
+        config = transformer_config_path,
+        torch_dtype=torch_dtype
     )
     print("Finished loading transformer")
 
