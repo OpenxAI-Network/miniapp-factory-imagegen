@@ -1,20 +1,23 @@
 import getopt
 import sys
 from diffusers import DiffusionPipeline, FlowMatchEulerDiscreteScheduler, QwenImageTransformer2DModel
+from transformers import Qwen2_5_VLForConditionalGeneration
 import torch 
 import math
 
 # https://huggingface.co/docs/diffusers/main/api/pipelines/qwenimage#lora-for-faster-inference
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "x", ["base=", "transformer=", "transformerconfig=", "lora="])
+        opts, args = getopt.getopt(sys.argv[1:], "x", ["base=", "transformer=", "transformerconfig=", "textencoder=", "textencoderconfig=", "lora="])
     except getopt.GetoptError as err:
         print(err)
         sys.exit(2)
 
     base_path = "/var/lib/miniapp-factory-imagegen/Qwen/Qwen-Image"
-    transformer_path = "/var/lib/miniapp-factory-imagegen/qwen_image_fp8_e4m3fn.safetensors"
+    transformer_path = "/var/lib/miniapp-factory-imagegen/qwen_image_float8_e4m3fn.safetensors"
     transformer_config_path = "/var/lib/miniapp-factory-imagegen/transformer/config.json"
+    text_encoder_path = "/var/lib/miniapp-factory-imagegen/qwen_2.5_vl_7b_fp8_scaled.safetensors"
+    text_encoder_config_path = "/var/lib/miniapp-factory-imagegen/text_encoder/config.json"
     lora_path = "/var/lib/miniapp-factory-imagegen/Qwen-Image-Lightning-4steps-V2.0.safetensors"
 
     for o, a in opts:
@@ -24,17 +27,21 @@ def main():
             transformer_path = a
         elif o == "--transformerconfig":
             transformer_config_path = a
+        elif o == "--textencoder":
+            text_encoder_path = a
+        elif o == "--textencoderconfig":
+            text_encoder_config_path = a
         elif o == "--lora":
             lora_path = a
         else:
             assert False, "unhandled option"
 
     if torch.cuda.is_available():
-        torch_dtype = torch.float16
+        torch_dtype = torch.bfloat16
         device = "cuda"
         print(f"Found device: {torch.cuda.get_device_name()} (VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f}GB)")
     else:
-        torch_dtype = torch.float16
+        torch_dtype = torch.float32
         device = "cpu"
 
     print(f"Running on {device}")
@@ -60,16 +67,25 @@ def main():
     transformer = QwenImageTransformer2DModel.from_single_file(
         transformer_path,
         config = transformer_config_path,
-        torch_dtype=torch_dtype,
+        torch_dtype=torch.float8_e4m3fn,
         local_files_only=True
     )
     print("Finished loading transformer")
+
+    text_encoder = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+        text_encoder_path,
+        config = text_encoder_config_path,
+        torch_dtype=torch.float8_e4m3fn,
+        local_files_only=True
+    )
+    print("Finished loading text_encoder")
 
     pipe = DiffusionPipeline.from_pretrained(
         base_path,
         scheduler=scheduler,
         transformer=transformer,
-        torch_dtype=torch_dtype,
+        text_encoder=text_encoder,
+        torch_dtype={"transformer": torch.float8_e4m3fn, "text_encoder":  torch.float8_e4m3fn, "default": torch_dtype},
         local_files_only=True
     )
     pipe.enable_vae_tiling()

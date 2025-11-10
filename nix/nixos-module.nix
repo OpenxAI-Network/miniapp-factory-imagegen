@@ -31,11 +31,10 @@ in
           fetchLFS = true;
           sparseCheckout = [
             "scheduler"
-            "text_encoder"
             "tokenizer"
             "vae"
           ];
-          sha256 = "sha256-ueHakFFWvKgQsZrJz/eJF682QQ8IR7tZOkOGbGMmKuE=";
+          sha256 = "sha256-OqZwaFiF3oLXURVXkwJgWCkqcQSAUZ2QWupf3emefKw=";
         };
         transformer = pkgs.fetchurl {
           name = "Comfy-Org/Qwen-Image_ComfyUI/qwen_image_fp8_e4m3fn.safetensors";
@@ -46,6 +45,16 @@ in
           name = "Qwen/Qwen-Image/transformer/config.json";
           url = "https://huggingface.co/Qwen/Qwen-Image/resolve/main/transformer/config.json";
           sha256 = "sha256-G9HvI/FZtOs8iU6uzCrCuata0xyhv47MCw9xCB8HMLU=";
+        };
+        text-encoder = pkgs.fetchurl {
+          name = "Comfy-Org/Qwen-Image_ComfyUI/qwen_2.5_vl_7b_fp8_scaled.safetensors";
+          url = "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors";
+          sha256 = "sha256-y1Y22FKg6mqQdasb70lsDbeu8TwCNQVx44iuqVnFwLQ=";
+        };
+        text-encoder-config = pkgs.fetchurl {
+          name = "Qwen/Qwen-Image/text_encoder/config.json";
+          url = "https://huggingface.co/Qwen/Qwen-Image/resolve/main/text_encoder/config.json";
+          sha256 = "sha256-CB1BuuTHWBWv3jQLXO452ccf6+P8MUbgNmp1pF2gwEs=";
         };
         lora = pkgs.fetchurl {
           name = "lightx2v/Qwen-Image-Lightning/Qwen-Image-Lightning-4steps-V2.0.safetensors";
@@ -59,7 +68,7 @@ in
           PYTHONUNBUFFERED = "1";
         };
         serviceConfig = {
-          ExecStart = "${lib.getExe miniapp-factory-imagegen} --base=${base} --transformer=${transformer} --transformerconfig=${transformer-config} --lora=${lora}";
+          ExecStart = "${lib.getExe miniapp-factory-imagegen} --base=${base} --transformer=${transformer} --transformerconfig=${transformer-config}  --textencoder=${text-encoder} --textencoderconfig=${text-encoder-config} --lora=${lora}";
           User = "miniapp-factory-imagegen";
           Group = "miniapp-factory-imagegen";
           StateDirectory = "miniapp-factory-imagegen";
