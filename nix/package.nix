@@ -11,6 +11,7 @@ python3Packages.buildPythonApplication {
     transformers
     torch
     accelerate
+    safetensors
     peft
     xformers
   ];

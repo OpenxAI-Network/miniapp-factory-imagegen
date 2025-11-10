@@ -1,50 +1,11 @@
-import getopt
-import sys
 from diffusers import DiffusionPipeline, FlowMatchEulerDiscreteScheduler, QwenImageTransformer2DModel
-from transformers import Qwen2_5_VLForConditionalGeneration
 import torch 
 import math
 
 # https://huggingface.co/docs/diffusers/main/api/pipelines/qwenimage#lora-for-faster-inference
 def main():
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "x", ["base=", "transformer=", "transformerconfig=", "textencoder=", "textencoderconfig=", "lora="])
-    except getopt.GetoptError as err:
-        print(err)
-        sys.exit(2)
-
-    base_path = "/var/lib/miniapp-factory-imagegen/Qwen/Qwen-Image"
-    transformer_path = "/var/lib/miniapp-factory-imagegen/qwen_image_float8_e4m3fn.safetensors"
-    transformer_config_path = "/var/lib/miniapp-factory-imagegen/transformer/config.json"
-    text_encoder_path = "/var/lib/miniapp-factory-imagegen/qwen_2.5_vl_7b_fp8_scaled.safetensors"
-    text_encoder_config_path = "/var/lib/miniapp-factory-imagegen/text_encoder/config.json"
-    lora_path = "/var/lib/miniapp-factory-imagegen/Qwen-Image-Lightning-4steps-V2.0.safetensors"
-
-    for o, a in opts:
-        if o == "--base":
-            base_path = a
-        elif o == "--transformer":
-            transformer_path = a
-        elif o == "--transformerconfig":
-            transformer_config_path = a
-        elif o == "--textencoder":
-            text_encoder_path = a
-        elif o == "--textencoderconfig":
-            text_encoder_config_path = a
-        elif o == "--lora":
-            lora_path = a
-        else:
-            assert False, "unhandled option"
-
     if torch.cuda.is_available():
-        torch_dtype = torch.bfloat16
-        device = "cuda"
         print(f"Found device: {torch.cuda.get_device_name()} (VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f}GB)")
-    else:
-        torch_dtype = torch.float32
-        device = "cpu"
-
-    print(f"Running on {device}")
 
     scheduler_config = {
         "base_image_seq_len": 256,
@@ -64,38 +25,37 @@ def main():
     }
     scheduler = FlowMatchEulerDiscreteScheduler.from_config(scheduler_config)
 
-    transformer = QwenImageTransformer2DModel.from_single_file(
-        transformer_path,
-        config = transformer_config_path,
-        torch_dtype=torch.float8_e4m3fn,
-        local_files_only=True
-    )
-    print("Finished loading transformer")
-
-    text_encoder = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-        text_encoder_path,
-        config = text_encoder_config_path,
-        torch_dtype=torch.float8_e4m3fn,
-        local_files_only=True
-    )
-    print("Finished loading text_encoder")
+    # transformer = QwenImageTransformer2DModel.from_pretrained(
+    #     "/var/lib/miniapp-factory-imagegen/model",
+    #     subfolder="transformer",
+    #     torch_dtype=torch.float8_e4m3fn,
+    #     local_files_only=True,
+    #     low_cpu_mem_usage=True,
+    #     device_map="balanced",
+    #     offload_folder="/var/lib/miniapp-factory-imagegen/offload"
+    # )
+    # print("Finished loading transformer")
+    # transformer.enable_layerwise_casting(storage_dtype=torch.float8_e4m3fn, compute_dtype=torch.bfloat16)
 
     pipe = DiffusionPipeline.from_pretrained(
-        base_path,
+        "/var/lib/miniapp-factory-imagegen/model",
         scheduler=scheduler,
-        transformer=transformer,
-        text_encoder=text_encoder,
-        torch_dtype={"transformer": torch.float8_e4m3fn, "text_encoder":  torch.float8_e4m3fn, "default": torch_dtype},
-        local_files_only=True
+        # transformer=transformer,
+        torch_dtype={"transformer": torch.float8_e4m3fn, "default": torch.bfloat16},
+        local_files_only=True,
+        low_cpu_mem_usage=True,
+        device_map="balanced",
+        offload_folder="/var/lib/miniapp-factory-imagegen/offload"
     )
-    pipe.enable_vae_tiling()
-    pipe.enable_attention_slicing()
-    pipe.enable_model_cpu_offload()
-    pipe.enable_xformers_memory_efficient_attention()
     print("Finished loading pipeline")
 
+    pipe.enable_vae_tiling()
+    pipe.enable_attention_slicing()
+    pipe.enable_xformers_memory_efficient_attention()
+    print("Finished optimizing pipeline")
+
     pipe.load_lora_weights(
-        lora_path
+        "/var/lib/miniapp-factory-imagegen/model/lora/lora.safetensors"
     )
     print("Finished loading lora")
 

@@ -68,11 +68,34 @@ in
           PYTHONUNBUFFERED = "1";
         };
         serviceConfig = {
-          ExecStart = "${lib.getExe miniapp-factory-imagegen} --base=${base} --transformer=${transformer} --transformerconfig=${transformer-config}  --textencoder=${text-encoder} --textencoderconfig=${text-encoder-config} --lora=${lora}";
           User = "miniapp-factory-imagegen";
           Group = "miniapp-factory-imagegen";
           StateDirectory = "miniapp-factory-imagegen";
         };
+        script =
+          let
+            path = "/var/lib/miniapp-factory-imagegen";
+          in
+          ''
+            rm -rf ${path}/model
+            mkdir -p ${path}/model
+            ln -s ${base}/model_index.json ${path}/model/model_index.json
+            ln -s ${base}/scheduler ${path}/model/scheduler
+            ln -s ${base}/tokenizer ${path}/model/tokenizer
+            ln -s ${base}/vae ${path}/model/vae
+            mkdir -p ${path}/model/transformer
+            ln -s ${transformer} ${path}/model/transformer/diffusion_pytorch_model.safetensors
+            ln -s ${transformer-config} ${path}/model/transformer/config.json
+            mkdir -p ${path}/model/text_encoder
+            ln -s ${text-encoder} ${path}/model/text_encoder/model.safetensors
+            ln -s ${text-encoder-config} ${path}/model/text_encoder/config.json
+            mkdir -p ${path}/model/lora
+            ln -s ${lora} ${path}/model/lora/lora.safetensors
+
+            rm -rf ${path}/offload
+            mkdir -p ${path}/offload
+            ${lib.getExe miniapp-factory-imagegen}
+          '';
       };
   };
 }
