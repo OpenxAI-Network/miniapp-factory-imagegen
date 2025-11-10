@@ -36,6 +36,8 @@ def main():
         torch_dtype = torch.float32
         device = "cpu"
 
+    print(f"Running on {device}")
+
     scheduler_config = {
         "base_image_seq_len": 256,
         "base_shift": math.log(3),  # We use shift=3 in distillation
@@ -53,19 +55,26 @@ def main():
         "use_karras_sigmas": False,
     }
     scheduler = FlowMatchEulerDiscreteScheduler.from_config(scheduler_config)
+
     transformer = QwenImageTransformer2DModel.from_single_file(
         transformer_path,
         config = transformer_config_path
     )
+    print("Finished loading transformer")
+
     pipe = DiffusionPipeline.from_pretrained(
         base_path,
         scheduler=scheduler,
         transformer=transformer,
         torch_dtype=torch_dtype
     ).enable_vae_tiling().enable_model_cpu_offload().to(device)
+    print("Finished loading pipeline")
+
     pipe.load_lora_weights(
         lora_path
     )
+    print("Finished loading lora")
+        
 
     prompt = "a tiny astronaut hatching from an egg on the moon, Ultra HD, 4K, cinematic composition."
     negative_prompt = " "

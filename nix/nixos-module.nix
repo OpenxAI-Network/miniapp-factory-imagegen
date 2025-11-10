@@ -55,6 +55,9 @@ in
       in
       {
         description = "Image generation server for Miniapp Factory";
+        environment = {
+          PYTHONUNBUFFERED = "1";
+        };
         serviceConfig = {
           ExecStart = "${lib.getExe miniapp-factory-imagegen} --base=${base} --transformer=${transformer} --transformerconfig=${transformer-config} --lora=${lora}";
           User = "miniapp-factory-imagegen";
