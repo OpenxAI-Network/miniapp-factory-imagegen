@@ -2,7 +2,7 @@
 name = 'miniapp-factory-imagegen'
 version = '1.0.0'
 description = 'Image generation server for Miniapp Factory'
-dependencies = ["diffusers", "transformers", "torch", "accelerate", "mmgp"]
+dependencies = ["diffusers", "transformers", "torch", "accelerate"]
 
 [project.scripts]
 miniapp-factory-imagegen = "main:main"

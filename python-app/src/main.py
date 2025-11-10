@@ -3,7 +3,6 @@ import sys
 from diffusers import DiffusionPipeline, FlowMatchEulerDiscreteScheduler, QwenImageTransformer2DModel
 import torch 
 import math
-from mmgp import offload, profile_type
 
 # https://huggingface.co/docs/diffusers/main/api/pipelines/qwenimage#lora-for-faster-inference
 def main():
@@ -81,9 +80,6 @@ def main():
         lora_path
     )
     print("Finished loading lora")
-        
-    offload.profile({"transformer": pipe.transformer, "vae": pipe.vae}, profile_type.LowRAM_LowVRAM)
-    print("Finished mmgp optimization")
 
     prompt = "a tiny astronaut hatching from an egg on the moon, Ultra HD, 4K, cinematic composition."
     negative_prompt = " "
