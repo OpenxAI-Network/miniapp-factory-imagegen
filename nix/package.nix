@@ -11,6 +11,7 @@ python3Packages.buildPythonApplication {
     transformers
     torch
     accelerate
+    mmgp
   ];
 
   src = ../python-app;

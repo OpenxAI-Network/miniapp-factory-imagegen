@@ -3,6 +3,7 @@ import sys
 from diffusers import DiffusionPipeline, FlowMatchEulerDiscreteScheduler, QwenImageTransformer2DModel
 import torch 
 import math
+from mmgp import offload, profile_type
 
 # https://huggingface.co/docs/diffusers/main/api/pipelines/qwenimage#lora-for-faster-inference
 def main():
@@ -32,6 +33,7 @@ def main():
     if torch.cuda.is_available():
         torch_dtype = torch.bfloat16
         device = "cuda"
+        print(f"Found device: {torch.cuda.get_device_name()} (VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f}GB)")
     else:
         torch_dtype = torch.float32
         device = "cpu"
@@ -59,7 +61,9 @@ def main():
     transformer = QwenImageTransformer2DModel.from_single_file(
         transformer_path,
         config = transformer_config_path,
-        torch_dtype=torch_dtype
+        torch_dtype=torch_dtype,
+        use_safetensors=True,
+        local_files_only=True
     )
     print("Finished loading transformer")
 
@@ -67,8 +71,10 @@ def main():
         base_path,
         scheduler=scheduler,
         transformer=transformer,
-        torch_dtype=torch_dtype
-    ).enable_vae_tiling().enable_model_cpu_offload().to(device)
+        torch_dtype=torch_dtype,
+        use_safetensors=True,
+        local_files_only=True
+    ).enable_vae_tiling().enable_attention_slicing().enable_model_cpu_offload()
     print("Finished loading pipeline")
 
     pipe.load_lora_weights(
@@ -76,6 +82,8 @@ def main():
     )
     print("Finished loading lora")
         
+    offload.profile({"transformer": pipe.transformer, "vae": pipe.vae}, profile_type.LowRAM_LowVRAM)
+    print("Finished mmgp optimization")
 
     prompt = "a tiny astronaut hatching from an egg on the moon, Ultra HD, 4K, cinematic composition."
     negative_prompt = " "
