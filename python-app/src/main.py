@@ -30,11 +30,11 @@ def main():
             assert False, "unhandled option"
 
     if torch.cuda.is_available():
-        torch_dtype = torch.bfloat16
+        torch_dtype = torch.float16
         device = "cuda"
         print(f"Found device: {torch.cuda.get_device_name()} (VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f}GB)")
     else:
-        torch_dtype = torch.float32
+        torch_dtype = torch.float16
         device = "cpu"
 
     print(f"Running on {device}")
@@ -60,8 +60,7 @@ def main():
     transformer = QwenImageTransformer2DModel.from_single_file(
         transformer_path,
         config = transformer_config_path,
-        torch_dtype=torch.float8_e4m3fn,
-        use_safetensors=True,
+        torch_dtype=torch_dtype,
         local_files_only=True
     )
     print("Finished loading transformer")
@@ -71,9 +70,12 @@ def main():
         scheduler=scheduler,
         transformer=transformer,
         torch_dtype=torch_dtype,
-        use_safetensors=True,
         local_files_only=True
-    ).enable_vae_tiling().enable_attention_slicing().enable_model_cpu_offload()
+    )
+    pipe.enable_vae_tiling()
+    pipe.enable_attention_slicing()
+    pipe.enable_model_cpu_offload()
+    pipe.enable_xformers_memory_efficient_attention()
     print("Finished loading pipeline")
 
     pipe.load_lora_weights(

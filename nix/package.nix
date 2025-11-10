@@ -11,6 +11,8 @@ python3Packages.buildPythonApplication {
     transformers
     torch
     accelerate
+    peft
+    xformers
   ];
 
   src = ../python-app;
