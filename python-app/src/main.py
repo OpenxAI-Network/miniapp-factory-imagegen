@@ -11,7 +11,7 @@ prompt_text = """
 {
   "3": {
     "inputs": {
-      "seed": 559301131700773,
+      "seed": 0,
       "steps": 4,
       "cfg": 1,
       "sampler_name": "euler",
@@ -41,7 +41,7 @@ prompt_text = """
   },
   "6": {
     "inputs": {
-      "text": "A simple vector illustration of a yellow banana, curved, drawn in flat style with a white background. The banana should be centered and occupy most of the canvas.",
+      "text": "",
       "clip": [
         "38",
         0
@@ -79,16 +79,6 @@ prompt_text = """
     "class_type": "VAEDecode",
     "_meta": {
       "title": "VAE Decode"
-    }
-  },
-  "37": {
-    "inputs": {
-      "unet_name": "qwen_image_fp8_e4m3fn.safetensors",
-      "weight_dtype": "default"
-    },
-    "class_type": "UNETLoader",
-    "_meta": {
-      "title": "Load Diffusion Model"
     }
   },
   "38": {
@@ -153,13 +143,22 @@ prompt_text = """
       "lora_name": "Qwen-Image-Lightning-4steps-V2.0.safetensors",
       "strength_model": 1,
       "model": [
-        "37",
+        "76",
         0
       ]
     },
     "class_type": "LoraLoaderModelOnly",
     "_meta": {
       "title": "LoraLoaderModelOnly"
+    }
+  },
+  "76": {
+    "inputs": {
+      "unet_name": "qwen-image-Q4_K_M.gguf"
+    },
+    "class_type": "UnetLoaderGGUF",
+    "_meta": {
+      "title": "Unet Loader (GGUF)"
     }
   }
 }

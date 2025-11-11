@@ -56,9 +56,9 @@
             services.comfyui.user = "miniapp-factory-imagegen";
             services.comfyui.models = [
               (pkgs.fetchResource {
-                name = "qwen_image_fp8_e4m3fn.safetensors";
-                url = "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/diffusion_models/qwen_image_fp8_e4m3fn.safetensors";
-                sha256 = "sha256-mHY6EncB62+1kJb3dCyzqn1k7VELn06ILYNR+BduPOM=";
+                name = "qwen-image-Q4_K_M.gguf";
+                url = "https://huggingface.co/city96/Qwen-Image-gguf/resolve/main/qwen-image-Q4_K_M.gguf";
+                sha256 = "sha256-xvSRA2A7mkknUCVJ+2FckQOGz8Z1sUZjJZMLoQ0qEfQ=";
                 passthru = {
                   comfyui.installPaths = [ "diffusion_models" ];
                 };
@@ -88,6 +88,12 @@
                 };
               })
             ];
+            services.comfyui.customNodes = [
+              pkgs.comfyuiPackages.comfyui-gguf
+            ];
+            services.comfyui.environmentVariables = {
+              "PYTORCH_CUDA_ALLOC_CONF" = "expandable_segments:True";
+            };
 
             nixpkgs.config.allowUnfree = true;
             nixpkgs.config.cudaSupport = true;
