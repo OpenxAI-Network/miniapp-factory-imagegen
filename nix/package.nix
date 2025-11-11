@@ -7,6 +7,7 @@ python3Packages.buildPythonApplication {
 
   propagatedBuildInputs = with python3.pkgs; [
     setuptools
+    websocket-client
   ];
 
   src = ../python-app;

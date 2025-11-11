@@ -2,7 +2,7 @@
 name = 'miniapp-factory-imagegen'
 version = '1.0.0'
 description = 'Image generation server for Miniapp Factory'
-dependencies = []
+dependencies = ["websocket-client"]
 
 [project.scripts]
 miniapp-factory-imagegen = "main:main"

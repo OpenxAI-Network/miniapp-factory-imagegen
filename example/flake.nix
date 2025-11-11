@@ -52,9 +52,8 @@
 
             systemd.services.comfyui.serviceConfig.DynamicUser = args.lib.mkForce false;
             systemd.services.comfyui.serviceConfig.ProtectHome = args.lib.mkForce false;
-            users.users.comfyui.group = "comfyui";
             services.comfyui.enable = true;
-            services.comfyui.user = "comfyui";
+            services.comfyui.user = "miniapp-factory-imagegen";
             services.comfyui.models = [
               (pkgs.fetchResource {
                 name = "qwen_image_fp8_e4m3fn.safetensors";
