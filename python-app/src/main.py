@@ -1,77 +1,179 @@
-from diffusers import DiffusionPipeline, FlowMatchEulerDiscreteScheduler, QwenImageTransformer2DModel
-import torch 
-import math
+import json
+from urllib import request
+from random import randint
 
-# https://huggingface.co/docs/diffusers/main/api/pipelines/qwenimage#lora-for-faster-inference
-def main():
-    if torch.cuda.is_available():
-        print(f"Found device: {torch.cuda.get_device_name()} (VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f}GB)")
-
-    scheduler_config = {
-        "base_image_seq_len": 256,
-        "base_shift": math.log(3),  # We use shift=3 in distillation
-        "invert_sigmas": False,
-        "max_image_seq_len": 8192,
-        "max_shift": math.log(3),  # We use shift=3 in distillation
-        "num_train_timesteps": 1000,
-        "shift": 1.0,
-        "shift_terminal": None,  # set shift_terminal to None
-        "stochastic_sampling": False,
-        "time_shift_type": "exponential",
-        "use_beta_sigmas": False,
-        "use_dynamic_shifting": True,
-        "use_exponential_sigmas": False,
-        "use_karras_sigmas": False,
+prompt_text = """
+{
+  "3": {
+    "inputs": {
+      "seed": 559301131700773,
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "66",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "58",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
     }
-    scheduler = FlowMatchEulerDiscreteScheduler.from_config(scheduler_config)
+  },
+  "6": {
+    "inputs": {
+      "text": "A simple vector illustration of a yellow banana, curved, drawn in flat style with a white background. The banana should be centered and occupy most of the canvas.",
+      "clip": [
+        "38",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "",
+      "clip": [
+        "38",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Negative Prompt)"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "37": {
+    "inputs": {
+      "unet_name": "qwen_image_fp8_e4m3fn.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "38": {
+    "inputs": {
+      "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "39": {
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "58": {
+    "inputs": {
+      "width": 512,
+      "height": 512,
+      "batch_size": 1
+    },
+    "class_type": "EmptySD3LatentImage",
+    "_meta": {
+      "title": "EmptySD3LatentImage"
+    }
+  },
+  "60": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "66": {
+    "inputs": {
+      "shift": 3,
+      "model": [
+        "75",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingAuraFlow",
+    "_meta": {
+      "title": "ModelSamplingAuraFlow"
+    }
+  },
+  "75": {
+    "inputs": {
+      "lora_name": "Qwen-Image-Lightning-4steps-V2.0.safetensors",
+      "strength_model": 1,
+      "model": [
+        "37",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoraLoaderModelOnly"
+    }
+  }
+}
+"""
 
-    transformer = QwenImageTransformer2DModel.from_pretrained(
-        "/var/lib/miniapp-factory-imagegen/model",
-        subfolder="transformer",
-        torch_dtype=torch.bfloat16,
-        local_files_only=True,
-        low_cpu_mem_usage=True,
-        # device_map="balanced",
-        offload_folder="/var/lib/miniapp-factory-imagegen/offload"
-    )
-    print("Finished loading transformer")
-    transformer.enable_layerwise_casting(storage_dtype=torch.float8_e4m3fn, compute_dtype=torch.bfloat16)
+def queue_prompt(prompt):
+    p = {"prompt": prompt}
+    data = json.dumps(p).encode('utf-8')
+    req =  request.Request("http://127.0.0.1:8188/prompt", data=data)
+    request.urlopen(req)
 
-    pipe = DiffusionPipeline.from_pretrained(
-        "/var/lib/miniapp-factory-imagegen/model",
-        scheduler=scheduler,
-        transformer=transformer,
-        torch_dtype=torch.bfloat16,
-        local_files_only=True,
-        low_cpu_mem_usage=True,
-        # device_map="balanced",
-        offload_folder="/var/lib/miniapp-factory-imagegen/offload"
-    )
-    print("Finished loading pipeline")
 
-    pipe.enable_sequential_cpu_offload()
-    pipe.enable_vae_tiling()
-    pipe.enable_attention_slicing()
-    pipe.enable_xformers_memory_efficient_attention()
-    print("Finished optimizing pipeline")
+def main():
+    prompt = json.loads(prompt_text)
 
-    pipe.load_lora_weights(
-        "/var/lib/miniapp-factory-imagegen/model/lora/lora.safetensors"
-    )
-    print("Finished loading lora")
+    prompt["3"]["inputs"]["seed"] = randint(1, 2**64)
+    prompt["6"]["inputs"]["text"] = "masterpiece best quality man"
 
-    prompt = "a tiny astronaut hatching from an egg on the moon, Ultra HD, 4K, cinematic composition."
-    negative_prompt = " "
-    image = pipe(
-        prompt=prompt,
-        negative_prompt=negative_prompt,
-        width=512,
-        height=512,
-        num_inference_steps=4,
-        true_cfg_scale=1.0,
-        generator=torch.manual_seed(0),
-    ).images[0]
-    image.save("output.png")
+    queue_prompt(prompt)
 
 if __name__ == "__main__":
     main()

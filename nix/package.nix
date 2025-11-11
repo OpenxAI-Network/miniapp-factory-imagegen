@@ -7,13 +7,6 @@ python3Packages.buildPythonApplication {
 
   propagatedBuildInputs = with python3.pkgs; [
     setuptools
-    diffusers
-    transformers
-    torch
-    accelerate
-    safetensors
-    peft
-    xformers
   ];
 
   src = ../python-app;
