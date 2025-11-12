@@ -4,6 +4,7 @@ import json
 from urllib import request
 import random
 import os
+import subprocess
 
 server_address = "127.0.0.1:8188"
 client_id = str(uuid.uuid4())
@@ -164,11 +165,10 @@ prompt_text = """
 }
 """
 
-
 def queue_prompt(prompt):
     p = {"prompt": prompt, "client_id": client_id}
     data = json.dumps(p).encode('utf-8')
-    req =  request.Request("http://{}/prompt".format(server_address), data=data)
+    req =  request.Request("http://{}/api/prompt".format(server_address), data=data)
     return json.loads(request.urlopen(req).read())
 
 # https://github.com/comfyanonymous/ComfyUI/blob/master/script_examples/websockets_api_example_ws_images.py
@@ -188,27 +188,58 @@ def main():
     ws = websocket.WebSocket()
     ws.connect(f"ws://{server_address}/ws?clientId={client_id}")
 
-    project = "cat-factory"
-    input = "a fluffy fat orange cat"
-    width = 512
-    height = 512
-    output = "cat"
+    # read project from file
+    data_dir = "/var/lib/miniapp-factory-imagegen"
+    with open(f"{data_dir}/assignment.json") as f:
+          assignment = json.loads(f.read())
 
-    prompt = json.loads(prompt_text)
-    prompt["3"]["inputs"]["seed"] = random.randint(1, 2**64)
-    prompt["6"]["inputs"]["text"] = input
-    prompt["58"]["inputs"]["width"] = width
-    prompt["58"]["inputs"]["height"] = height
-    prefix = f"{project}-{output}"
-    prompt["60"]["inputs"]["filename_prefix"] = prefix
+    project = assignment["project"]
+    project_dir = f"{data_dir}/projects/{project}"
+    os.makedirs(project_dir, exist_ok=True)
+    subprocess.run([f"{os.environ['GIT']}git", "clone", f"github:miniapp-factory/{project}", project_dir])
 
-    execute_prompt(ws, prompt)
+    images_dir = f"{project_dir}/miniapp/public"
+    for filename in os.listdir(images_dir):
+      if not filename.endswith(".png.todo"):
+          continue
+      
+      file_path = os.path.join(images_dir, filename)
+      if not os.path.isfile(file_path):
+          continue
+      
+      with open(file_path) as f:
+          file_content = f.read()
 
-    os.rename(f"/var/lib/comfyui/.local/share/comfyui/output/{prefix}_00001_.png", f"/var/lib/miniapp-factory-imagegen/{output}.png")
-    # os.rename(f"/var/lib/comfyui/.local/share/comfyui/output/{prefix}_00001_.png", f"/var/lib/miniapp-factory-imagegen/projects/{project}/miniapp/public/{output}.png")
-    # os.rename(f"/var/lib/miniapp-factory-imagegen/projects/{project}/miniapp/public/{output}.png.todo", f"/var/lib/miniapp-factory-imagegen/projects/{project}/miniapp/public/{output}.png.done")
+      components = file_content.split("\n")
+      dimensions = components[0].split("x")
+
+      input = components[1]
+      width = dimensions[0]
+      height = dimensions[1]
+      output = filename.replace(".png.todo", "")
+
+      prompt = json.loads(prompt_text)
+      prompt["3"]["inputs"]["seed"] = random.randint(1, 2**64)
+      prompt["6"]["inputs"]["text"] = input
+      prompt["58"]["inputs"]["width"] = width
+      prompt["58"]["inputs"]["height"] = height
+      prefix = f"{project}-{output}"
+      prompt["60"]["inputs"]["filename_prefix"] = prefix
+
+      execute_prompt(ws, prompt)
+
+      os.rename(f"/var/lib/comfyui/.local/share/comfyui/output/{prefix}_00001_.png", f"{images_dir}/{output}.png")
+      os.rename(f"{images_dir}/{output}.png.todo", f"{images_dir}/{output}.png.done")
 
     ws.close()
+
+    subprocess.run([f"{os.environ['GIT']}git", "-C", project_dir, "add", "-A"])
+    subprocess.run([f"{os.environ['GIT']}git", "-C", project_dir, "commit", "-m", "image generation"])
+    subprocess.run([f"{os.environ['GIT']}git", "-C", project_dir, "push"])
+    git_hash = subprocess.run([f"{os.environ['GIT']}git", "-C", project_dir, "rev-parse", "HEAD"], capture_output=True, text=True).stdout
+
+    with open(f"{data_dir}/assignment.json") as f:
+          f.write(json.dumps({"git_hash": git_hash}).encode('utf-8'))
 
 
 if __name__ == "__main__":

@@ -91,9 +91,7 @@
             services.comfyui.customNodes = [
               pkgs.comfyuiPackages.comfyui-gguf
             ];
-            services.comfyui.environmentVariables = {
-              "PYTORCH_CUDA_ALLOC_CONF" = "expandable_segments:True";
-            };
+            services.comfyui.extraFlags = [ "--cache-none" ];
 
             nixpkgs.config.allowUnfree = true;
             nixpkgs.config.cudaSupport = true;
