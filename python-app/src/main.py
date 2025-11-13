@@ -198,7 +198,8 @@ def main():
     os.makedirs(project_dir, exist_ok=True)
     subprocess.run([f"{os.environ['GIT']}git", "clone", f"github:miniapp-factory/{project}", project_dir])
 
-    images_dir = f"{project_dir}/miniapp/public"
+    made_changes = False
+    images_dir = f"{project_dir}/mini-app/public"
     for filename in os.listdir(images_dir):
       if not filename.endswith(".png.todo"):
           continue
@@ -230,16 +231,18 @@ def main():
 
       os.rename(f"/var/lib/comfyui/.local/share/comfyui/output/{prefix}_00001_.png", f"{images_dir}/{output}.png")
       os.rename(f"{images_dir}/{output}.png.todo", f"{images_dir}/{output}.png.done")
+      made_changes = True
 
     ws.close()
 
-    subprocess.run([f"{os.environ['GIT']}git", "-C", project_dir, "add", "-A"])
-    subprocess.run([f"{os.environ['GIT']}git", "-C", project_dir, "commit", "-m", "image generation"])
-    subprocess.run([f"{os.environ['GIT']}git", "-C", project_dir, "push"])
+    if made_changes:
+      subprocess.run([f"{os.environ['GIT']}git", "-C", project_dir, "add", "-A"])
+      subprocess.run([f"{os.environ['GIT']}git", "-C", project_dir, "commit", "-m", "image generation"])
+      subprocess.run([f"{os.environ['GIT']}git", "-C", project_dir, "push"])
     git_hash = subprocess.run([f"{os.environ['GIT']}git", "-C", project_dir, "rev-parse", "HEAD"], capture_output=True, text=True).stdout
 
-    with open(f"{data_dir}/assignment.json") as f:
-          f.write(json.dumps({"git_hash": git_hash}).encode('utf-8'))
+    with open(f"{data_dir}/assignment.json", "w") as f:
+          f.write(json.dumps({"git_hash": git_hash}))
 
 
 if __name__ == "__main__":
