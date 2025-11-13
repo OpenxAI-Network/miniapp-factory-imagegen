@@ -5,6 +5,7 @@ from urllib import request
 import random
 import os
 import subprocess
+import shutil
 
 server_address = "127.0.0.1:8188"
 client_id = str(uuid.uuid4())
@@ -240,6 +241,8 @@ def main():
       subprocess.run([f"{os.environ['GIT']}git", "-C", project_dir, "commit", "-m", "image generation"])
       subprocess.run([f"{os.environ['GIT']}git", "-C", project_dir, "push"])
     git_hash = subprocess.run([f"{os.environ['GIT']}git", "-C", project_dir, "rev-parse", "HEAD"], capture_output=True, text=True).stdout
+
+    shutil.rmtree(project_dir)
 
     with open(f"{data_dir}/assignment.json", "w") as f:
           f.write(json.dumps({"git_hash": git_hash}))
