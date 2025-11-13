@@ -216,8 +216,8 @@ def main():
       dimensions = components[0].split("x")
 
       input = components[1]
-      width = dimensions[0]
-      height = dimensions[1]
+      width = min(2048, max(512, int(dimensions[0])))
+      height = min(2048, max(512, int(dimensions[1])))
       output = filename.replace(".png.todo", "")
 
       prompt = json.loads(prompt_text)
