@@ -212,27 +212,31 @@ def main():
       with open(file_path) as f:
           file_content = f.read()
 
-      components = file_content.split("\n")
-      dimensions = components[0].split("x")
-
-      input = components[1]
-      width = min(2048, max(512, int(dimensions[0])))
-      height = min(2048, max(512, int(dimensions[1])))
       output = filename.replace(".png.todo", "")
+      try:
+        components = file_content.split("\n")
+        dimensions = components[0].split("x")
 
-      prompt = json.loads(prompt_text)
-      prompt["3"]["inputs"]["seed"] = random.randint(1, 2**64)
-      prompt["6"]["inputs"]["text"] = input
-      prompt["58"]["inputs"]["width"] = width
-      prompt["58"]["inputs"]["height"] = height
-      prefix = f"{project}-{output}"
-      prompt["60"]["inputs"]["filename_prefix"] = prefix
+        input = components[1]
+        width = min(2048, max(512, int(dimensions[0])))
+        height = min(2048, max(512, int(dimensions[1])))
 
-      execute_prompt(ws, prompt)
+        prompt = json.loads(prompt_text)
+        prompt["3"]["inputs"]["seed"] = random.randint(1, 2**64)
+        prompt["6"]["inputs"]["text"] = input
+        prompt["58"]["inputs"]["width"] = width
+        prompt["58"]["inputs"]["height"] = height
+        prefix = f"{project}-{output}"
+        prompt["60"]["inputs"]["filename_prefix"] = prefix
 
-      os.rename(f"/var/lib/comfyui/.local/share/comfyui/output/{prefix}_00001_.png", f"{images_dir}/{output}.png")
-      os.rename(f"{images_dir}/{output}.png.todo", f"{images_dir}/{output}.png.done")
-      made_changes = True
+        execute_prompt(ws, prompt)
+
+        os.rename(f"/var/lib/comfyui/.local/share/comfyui/output/{prefix}_00001_.png", f"{images_dir}/{output}.png")
+      except Exception as e:
+          print(f"COULDN'T PROCESS {file_path}: {e}")
+      finally:
+        os.rename(f"{images_dir}/{output}.png.todo", f"{images_dir}/{output}.png.done")
+        made_changes = True
 
     ws.close()
 
