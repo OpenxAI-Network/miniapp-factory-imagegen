@@ -199,9 +199,12 @@ def main():
     os.makedirs(project_dir, exist_ok=True)
     subprocess.run([f"{os.environ['GIT']}git", "clone", f"github:miniapp-factory/{project}", project_dir])
 
-    made_changes = False
+    images_generated = 0
     images_dir = f"{project_dir}/mini-app/public"
     for filename in os.listdir(images_dir):
+      if images_generated >= 15:
+          continue
+
       if not filename.endswith(".png.todo"):
           continue
       
@@ -236,11 +239,11 @@ def main():
           print(f"COULDN'T PROCESS {file_path}: {e}")
       finally:
         os.rename(f"{images_dir}/{output}.png.todo", f"{images_dir}/{output}.png.done")
-        made_changes = True
+        images_generated += 1
 
     ws.close()
 
-    if made_changes:
+    if images_generated > 0:
       subprocess.run([f"{os.environ['GIT']}git", "-C", project_dir, "add", "-A"])
       subprocess.run([f"{os.environ['GIT']}git", "-C", project_dir, "commit", "-m", "image generation"])
       subprocess.run([f"{os.environ['GIT']}git", "-C", project_dir, "push"])
